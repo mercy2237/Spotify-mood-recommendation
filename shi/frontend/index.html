@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotify Mood Recommendation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero-panel">
+      <nav class="topbar">
+        <div class="brand">
+          <div class="brand-icon">♪</div>
+          <span>Spotify Mood AI</span>
+        </div>
+        <div class="top-actions">
+          <span class="status-pill" id="apiStatus">Checking AI...</span>
+          <button class="ghost-btn" id="shuffleBtn">Shuffle Mood</button>
+        </div>
+      </nav>
+
+      <div class="hero-content">
+        <p class="eyebrow">Random Forest mood classification + KNN recommendations</p>
+        <h1>Find songs that match your current mood.</h1>
+        <p class="subtitle">
+          Choose a mood for recommendations, or use the audio-feature sliders below to let the trained AI model classify the mood first.
+        </p>
+
+        <div class="mood-grid" id="moodGrid"></div>
+
+        <div class="recommend-count-card">
+          <div class="recommend-count-topline">
+            <div>
+              <p class="eyebrow compact">Recommendation Count</p>
+              <h3>Choose how many songs to show</h3>
+            </div>
+            <strong id="recommendCountValue">30 songs</strong>
+          </div>
+          <input id="recommendCountSlider" class="count-slider" type="range" min="20" max="40" step="5" value="30" aria-label="Number of recommendations">
+          <div class="range-scale"><span>20</span><span>40</span></div>
+        </div>
+
+        <div class="ai-control-card">
+          <div class="ai-control-header">
+            <div>
+              <p class="eyebrow compact">AI Classifier</p>
+              <h3>Predict mood from audio features</h3>
+            </div>
+            <button class="primary-btn" id="predictBtn">Analyze Mood</button>
+          </div>
+
+          <div class="feature-grid">
+            <div class="feature-control">
+              <div class="feature-topline">
+                <span class="feature-name">Danceability</span>
+                <button class="info-btn" type="button" aria-label="Danceability information" data-info="Danceability measures how suitable a track is for dancing based on rhythm, beat strength, and overall groove.">i</button>
+                <strong class="range-value" data-value-for="danceability">8</strong>
+              </div>
+              <input type="range" min="1" max="10" step="1" value="8" data-feature="danceability">
+              <div class="range-scale"><span>Low</span><span>High</span></div>
+            </div>
+
+            <div class="feature-control">
+              <div class="feature-topline">
+                <span class="feature-name">Energy</span>
+                <button class="info-btn" type="button" aria-label="Energy information" data-info="Energy measures how intense and active a track feels. High energy songs usually sound fast, loud, and powerful.">i</button>
+                <strong class="range-value" data-value-for="energy">8</strong>
+              </div>
+              <input type="range" min="1" max="10" step="1" value="8" data-feature="energy">
+              <div class="range-scale"><span>Low</span><span>High</span></div>
+            </div>
+
+            <div class="feature-control">
+              <div class="feature-topline">
+                <span class="feature-name">Acousticness</span>
+                <button class="info-btn" type="button" aria-label="Acousticness information" data-info="Acousticness is a measure of how much a track sounds like it was played with natural, unamplified instruments rather than generated or heavily processed by electronic equipment.">i</button>
+                <strong class="range-value" data-value-for="acousticness">2</strong>
+              </div>
+              <input type="range" min="1" max="10" step="1" value="2" data-feature="acousticness">
+              <div class="range-scale"><span>Low</span><span>High</span></div>
+            </div>
+
+            <div class="feature-control">
+              <div class="feature-topline">
+                <span class="feature-name">General Mood</span>
+                <button class="info-btn" type="button" aria-label="General mood information" data-info="General Mood replaces valence. It measures whether a song feels more negative, sad, or tense, or more positive, happy, and uplifting.">i</button>
+                <strong class="range-value" data-value-for="valence">9</strong>
+              </div>
+              <input type="range" min="1" max="10" step="1" value="9" data-feature="valence">
+              <div class="range-scale mood-scale"><span>Negative</span><span>Positive</span></div>
+            </div>
+
+            <div class="feature-control tempo-control">
+              <div class="feature-topline">
+                <span class="feature-name">Tempo</span>
+                <button class="info-btn" type="button" aria-label="Tempo information" data-info="Tempo is the speed of the song measured in beats per minute (BPM). Higher BPM usually feels faster.">i</button>
+                <strong class="range-value" data-value-for="tempo">124 BPM</strong>
+              </div>
+              <input type="range" min="60" max="200" step="1" value="124" data-feature="tempo">
+              <div class="range-scale"><span>Low</span><span>High</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="result-panel">
+      <div class="result-header">
+        <div>
+          <p class="eyebrow">Current mood</p>
+          <h2 id="selectedMood">Happy</h2>
+        </div>
+        <div class="score-card">
+          <span id="matchScore">94%</span>
+          <small id="scoreLabel">AI confidence</small>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <input id="searchInput" type="text" placeholder="Search recommendation..." />
+        <div class="custom-select" id="sortDropdown">
+          <button class="select-trigger" type="button" id="sortTrigger" aria-haspopup="listbox" aria-expanded="false">
+            <span id="sortLabel">Best match</span>
+            <span class="chevron">⌄</span>
+          </button>
+          <div class="select-menu" role="listbox" aria-label="Sort recommendations">
+            <button type="button" data-sort="match" class="selected">Best match</button>
+            <button type="button" data-sort="title">Title A-Z</button>
+            <button type="button" data-sort="artist">Artist A-Z</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="now-playing-card">
+        <div class="album-art" id="albumArt">H</div>
+        <div class="track-info">
+          <p>Top recommendation</p>
+          <h3 id="topTrack">Golden Hour Drive</h3>
+          <span id="topArtist">Nova Lane</span>
+        </div>
+        <div class="wave">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="ghost-btn refresh-btn" id="refreshBtn">Randomize Songs</button>
+        <label class="prioritize-toggle" for="prioritizeNewSongs">
+          <input id="prioritizeNewSongs" type="checkbox" checked>
+          <span class="fake-checkbox">✓</span>
+          <span>Prioritize New Songs</span>
+        </label>
+      </div>
+
+      <div class="section-title">
+        <div>
+          <h3>Recommended Songs</h3>
+          <small id="sourceLabel">Connected to backend AI</small>
+        </div>
+        <span id="songCount">0 songs</span>
+      </div>
+
+      <div class="song-list" id="songList"></div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
