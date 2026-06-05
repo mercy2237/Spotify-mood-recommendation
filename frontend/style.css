@@ -1442,3 +1442,117 @@ body {
     max-height: none !important;
   }
 }
+
+
+/* Moodify final polish */
+.song-card {
+  width: 100%;
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+}
+.song-card:hover {
+  transform: none !important;
+}
+.song-meta {
+  min-width: 106px;
+  max-width: 118px;
+  flex-shrink: 0;
+}
+.spotify-link {
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.song-main {
+  min-width: 0;
+}
+.preview-area {
+  max-width: 100%;
+  overflow: hidden;
+}
+.source-origin {
+  display: none !important;
+}
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+@media (max-width: 560px) {
+  .song-card {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .song-meta {
+    grid-column: 2;
+    text-align: left;
+    max-width: none;
+    min-width: 0;
+  }
+}
+
+/* Song card layout fix: keep number, percentage, and Spotify CTA pinned at the top */
+.song-card {
+  grid-template-columns: 42px minmax(0, 1fr) auto !important;
+  grid-template-rows: auto auto !important;
+  align-items: start !important;
+  column-gap: 14px !important;
+  row-gap: 10px !important;
+}
+
+.song-rank,
+.song-main,
+.song-meta {
+  align-self: start !important;
+}
+
+.song-meta {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  padding-top: 1px !important;
+}
+
+.song-meta strong {
+  line-height: 1 !important;
+}
+
+.preview-area {
+  grid-column: 2 / 4 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-top: 0 !important;
+  overflow: hidden !important;
+}
+
+.song-preview,
+.embed-preview {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.embed-preview iframe {
+  width: 100% !important;
+}
+
+@media (max-width: 560px) {
+  .song-card {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+  }
+
+  .song-meta {
+    grid-column: 2 !important;
+    align-items: flex-start !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .preview-area {
+    grid-column: 1 / -1 !important;
+  }
+}

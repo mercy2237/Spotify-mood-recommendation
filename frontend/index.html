@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spotify Mood Recommendation</title>
+  <title>Moodify</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,19 +15,18 @@
       <nav class="topbar">
         <div class="brand">
           <div class="brand-icon">♪</div>
-          <span>Spotify Mood AI</span>
+          <span>Moodify</span>
         </div>
         <div class="top-actions">
-          <span class="status-pill" id="apiStatus">Checking AI...</span>
           <button class="ghost-btn" id="shuffleBtn">Shuffle Mood</button>
         </div>
       </nav>
 
       <div class="hero-content">
-        <p class="eyebrow">Random Forest mood classification + KNN recommendations</p>
+        <p class="eyebrow">Mood-based song recommendations.</p>
         <h1>Find songs that match your current mood.</h1>
         <p class="subtitle">
-          Choose a mood for recommendations, or use the audio-feature sliders below to let the trained AI model classify the mood first.
+          Choose a mood for recommendations, or use the audio-feature sliders below to let the trained ML model make a guess on your mood!
         </p>
 
         <div class="mood-grid" id="moodGrid"></div>
@@ -47,7 +46,7 @@
         <div class="ai-control-card">
           <div class="ai-control-header">
             <div>
-              <p class="eyebrow compact">AI Classifier</p>
+              <p class="eyebrow compact">Mood Predictor</p>
               <h3>Predict mood from audio features</h3>
             </div>
             <button class="primary-btn" id="predictBtn">Analyze Mood</button>
@@ -116,7 +115,7 @@
         </div>
         <div class="score-card">
           <span id="matchScore">94%</span>
-          <small id="scoreLabel">AI confidence</small>
+          <small id="scoreLabel">Mood confidence</small>
         </div>
       </div>
 
@@ -159,7 +158,7 @@
       <div class="section-title">
         <div>
           <h3>Recommended Songs</h3>
-          <small id="sourceLabel">Connected to backend AI</small>
+          <small id="sourceLabel"></small>
         </div>
         <span id="songCount">0 songs</span>
       </div>

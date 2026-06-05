@@ -92,9 +92,9 @@ let backendOnline = false;
 let currentSort = "match";
 let recommendationLimit = Number(recommendCountSlider?.value || 30);
 
-const HISTORY_KEY = "spotifyMoodRecentlyShownV2";
+const HISTORY_KEY = "moodifyRecentlyShownV2";
 const REPEAT_CHANCE = 0.33;
-const PRIORITIZE_KEY = "spotifyMoodPrioritizeNewSongs";
+const PRIORITIZE_KEY = "moodifyPrioritizeNewSongs";
 
 function songKey(song) {
   return `${String(song.title || "").trim().toLowerCase()}::${String(song.artist || "").trim().toLowerCase()}`;
@@ -200,12 +200,16 @@ async function checkBackend() {
     const response = await fetch(`${API_BASE}/api/health`);
     const data = await response.json();
     backendOnline = data.status === "ok" && data.model_loaded;
-    apiStatus.textContent = backendOnline ? `AI Connected • ${data.dataset_song_count || 0} songs` : "AI Offline";
-    apiStatus.classList.toggle("online", backendOnline);
+    if (apiStatus) {
+      apiStatus.textContent = backendOnline ? `Moodify Ready • ${data.dataset_song_count || 0} songs` : "Moodify Offline";
+      apiStatus.classList.toggle("online", backendOnline);
+    }
   } catch {
     backendOnline = false;
-    apiStatus.textContent = "FE-only fallback";
-    apiStatus.classList.remove("online");
+    if (apiStatus) {
+      apiStatus.textContent = "Moodify fallback";
+      apiStatus.classList.remove("online");
+    }
   }
 }
 
@@ -321,8 +325,10 @@ async function analyzeMood() {
     rememberShown(currentMood, currentSongs);
     recommendationSource = data.source || "model";
   } catch (error) {
-    apiStatus.textContent = "Start backend first";
-    apiStatus.classList.remove("online");
+    if (apiStatus) {
+      apiStatus.textContent = "Start backend first";
+      apiStatus.classList.remove("online");
+    }
   } finally {
     predictBtn.disabled = false;
     predictBtn.textContent = "Analyze Mood";
@@ -379,14 +385,13 @@ function renderSongs() {
           <div class="song-tags">
             <span class="source-badge">${song.genre || "pop"}</span>
             <span class="source-badge">${song.language || "English"}</span>
-            <span class="source-badge source-origin ${String(song.source || "dataset").includes("outside") ? "outside" : "dataset"}">${song.source || "dataset"}</span>
           </div>
-          <div class="preview-area">${previewBlock}</div>
         </div>
         <div class="song-meta">
           <strong>${Math.round(song.score)}%</strong>
           <a class="spotify-link" href="${spotifyUrl}" target="_blank" rel="noopener">Open Spotify</a>
         </div>
+        <div class="preview-area">${previewBlock}</div>
       </article>
     `;
   }).join("");
@@ -396,7 +401,7 @@ function renderTopSong() {
   const top = currentSongs[0];
   selectedMood.textContent = currentMood;
   matchScore.textContent = `${Math.round(currentConfidence * 100)}%`;
-  scoreLabel.textContent = backendOnline ? "AI confidence" : "demo confidence";
+  scoreLabel.textContent = backendOnline ? "Mood confidence" : "Demo confidence";
   topTrack.textContent = top.title;
   topArtist.textContent = top.artist;
   albumArt.textContent = currentMood.charAt(0);

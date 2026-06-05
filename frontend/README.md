@@ -1,3 +1,3 @@
 # Frontend
 
-This is the fullscreen Spotify-style UI. For AI integration, run the project from the root folder with `python app.py` instead of opening `index.html` directly.
+This is the fullscreen Moodify UI. For ML integration, run the project from the root folder with `python app.py` instead of opening `index.html` directly.
