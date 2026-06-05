@@ -1,4 +1,4 @@
-const API_BASE = window.location.origin.includes("5000") ? window.location.origin : "http://127.0.0.1:5000";
+const API_BASE = window.location.origin;
 
 const moods = [
   { name: "Happy", icon: "😊", desc: "Bright and positive" },
@@ -10,57 +10,7 @@ const moods = [
   { name: "Sad", icon: "🌧️", desc: "Deep and mellow" },
 ];
 
-const fallbackRecommendations = {
-  Happy: [
-    { title: "Golden Hour Drive", artist: "Nova Lane", score: 98 },
-    { title: "Sunshine Replay", artist: "The Brights", score: 95 },
-    { title: "Good Day Loop", artist: "Milo Verse", score: 92 },
-    { title: "Weekend Smile", artist: "Ari Cloud", score: 90 },
-    { title: "Feel Good Again", artist: "Juno Parks", score: 88 },
-  ],
-  Energetic: [
-    { title: "Neon Sprint", artist: "Pulse Unit", score: 99 },
-    { title: "Run The Night", artist: "Vexa", score: 96 },
-    { title: "Electric Crowd", artist: "DJ Orbit", score: 94 },
-    { title: "No Brakes", artist: "Kai Motion", score: 91 },
-    { title: "Bassline Rush", artist: "Hyper City", score: 89 },
-  ],
-  Calm: [
-    { title: "Quiet Window", artist: "Luna Shore", score: 97 },
-    { title: "Soft Rain Walk", artist: "Eden Vale", score: 94 },
-    { title: "Low Tide", artist: "Moss Theory", score: 92 },
-    { title: "Breathe Slowly", artist: "River North", score: 90 },
-    { title: "Cloud Room", artist: "Nia Field", score: 87 },
-  ],
-  Romantic: [
-    { title: "Only With You", artist: "Sora Blue", score: 98 },
-    { title: "Slow Dance Signal", artist: "Mia Vale", score: 96 },
-    { title: "Paper Hearts", artist: "Eli Moon", score: 93 },
-    { title: "Warm Lights", artist: "The Velvet Days", score: 91 },
-    { title: "Close To Home", artist: "June Atlas", score: 88 },
-  ],
-  Angry: [
-    { title: "Red Static", artist: "Iron Echo", score: 99 },
-    { title: "Break The Wall", artist: "Riot Frame", score: 96 },
-    { title: "Heavy Signal", artist: "Noir Engine", score: 94 },
-    { title: "Sharp Edge", artist: "Raze Bloom", score: 91 },
-    { title: "Burn Mode", artist: "Crash Theory", score: 88 },
-  ],
-  "Low Energy": [
-    { title: "Midnight Blanket", artist: "Noah Grey", score: 97 },
-    { title: "Half Awake", artist: "Velvet Fog", score: 95 },
-    { title: "Dim Lamp", artist: "Sage Motel", score: 92 },
-    { title: "Slow Orbit", artist: "Blue Finch", score: 89 },
-    { title: "After Hours Drift", artist: "Mellow Kin", score: 87 },
-  ],
-  Sad: [
-    { title: "Empty Station", artist: "Clara West", score: 98 },
-    { title: "Rain On Tuesday", artist: "Northline", score: 95 },
-    { title: "Faded Letters", artist: "Aster Grey", score: 93 },
-    { title: "Last Train Home", artist: "Hollow June", score: 90 },
-    { title: "Blue Apartment", artist: "The Still Room", score: 88 },
-  ],
-};
+const fallbackRecommendations = {};
 
 const moodGrid = document.getElementById("moodGrid");
 const selectedMood = document.getElementById("selectedMood");
@@ -86,7 +36,7 @@ const prioritizeNewSongs = document.getElementById("prioritizeNewSongs");
 
 let currentMood = "Happy";
 let currentConfidence = 0.94;
-let currentSongs = fallbackRecommendations[currentMood];
+let currentSongs = [];
 let recommendationSource = "fallback";
 let backendOnline = false;
 let currentSort = "match";
@@ -207,7 +157,7 @@ async function checkBackend() {
   } catch {
     backendOnline = false;
     if (apiStatus) {
-      apiStatus.textContent = "Moodify fallback";
+      apiStatus.textContent = "Backend unavailable";
       apiStatus.classList.remove("online");
     }
   }
@@ -286,13 +236,13 @@ async function loadRecommendations(mood) {
     const data = await response.json();
     currentMood = data.mood;
     currentConfidence = data.confidence || 0.94;
-    currentSongs = data.recommendations || fallbackRecommendations[currentMood];
+    currentSongs = data.recommendations || [];
     rememberShown(currentMood, currentSongs);
     recommendationSource = data.source || "model";
   } catch {
     currentMood = mood;
     currentConfidence = 0.94;
-    currentSongs = fallbackRecommendations[mood];
+    currentSongs = [];
     recommendationSource = "fallback";
   } finally {
     setLoading(false);
@@ -321,7 +271,7 @@ async function analyzeMood() {
     const data = await response.json();
     currentMood = data.mood;
     currentConfidence = data.confidence || 0.9;
-    currentSongs = data.recommendations || fallbackRecommendations[currentMood];
+    currentSongs = data.recommendations || [];
     rememberShown(currentMood, currentSongs);
     recommendationSource = data.source || "model";
   } catch (error) {
@@ -365,7 +315,7 @@ function renderSongs() {
   sourceLabel.textContent = "";
 
   if (!songs.length) {
-    songList.innerHTML = `<div class="empty-state">No recommendations found. Try another search.</div>`;
+    songList.innerHTML = `<div class="empty-state">No recommendations found. Backend/dataset is not loading.</div>`;
     return;
   }
 
@@ -398,7 +348,7 @@ function renderSongs() {
 }
 
 function renderTopSong() {
-  const top = currentSongs[0];
+  const top = currentSongs[0] || { title: "No song loaded", artist: "Check backend/dataset" };
   selectedMood.textContent = currentMood;
   matchScore.textContent = `${Math.round(currentConfidence * 100)}%`;
   scoreLabel.textContent = backendOnline ? "Mood confidence" : "Demo confidence";

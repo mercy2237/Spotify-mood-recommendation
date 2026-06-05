@@ -1,6 +1,6 @@
-# Spotify Mood Recommendation App
+# Moodify
 
-This version includes a fullscreen frontend and a small Flask backend that loads the submitted AI model from `models/mood_model.pkl`.
+This version includes a fullscreen frontend and a small Flask backend that loads the submitted ML model from `models/mood_model.pkl`.
 
 ## Run the app
 
@@ -25,16 +25,16 @@ http://127.0.0.1:5000
 
 ## What is integrated
 
-- Frontend fullscreen Spotify-style UI
+- Frontend fullscreen music-style UI
 - Flask backend
-- Random Forest / MLflow sklearn model loading
+- Mood prediction model loading
 - `/api/predict` endpoint for mood classification from audio features
 - `/api/recommend` endpoint for mood-based song output
 - Frontend connected to the backend AI
 
 ## Important note about songs
 
-The zip contains the trained mood model inside `mlruns.zip`, but it does not contain `dataset.csv` or `songs.pkl`. Because of that, the app can classify mood using the AI model, but song recommendations will use fallback demo songs until a real song dataset is added.
+The zip contains the trained mood model inside `mlruns.zip`, but it does not contain `dataset.csv` or `songs.pkl`. Because of that, the app can classify mood using the ML model, but song recommendations will use fallback demo songs until a real song dataset is added.
 
 To use real songs, put one of these in the project root:
 
