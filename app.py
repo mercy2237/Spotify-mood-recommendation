@@ -31,8 +31,81 @@ FEATURES = [
 ]
 MOODS = ["Happy", "Energetic", "Calm", "Romantic", "Angry", "Low Energy", "Sad"]
 
-# Songs that are NOT taken from dataset.csv. These are only used as an "outside dataset"
-# mixed recommendation pool, because this project does not use Spotify API / external API.
+SPOTIFY_MOOD_QUERIES: Dict[str, Dict[str, List[str]]] = {
+    # Outside-dataset Spotify results are intentionally weighted around 70% English.
+    # Spotify does not expose reliable track language, so Moodify uses query buckets as safer labels.
+    "Happy": {
+        "English": [
+            "happy upbeat english pop", "feel good english hits", "sunny english indie pop",
+            "english summer pop", "english dance pop happy", "english good vibes songs",
+            "english cheerful pop"
+        ],
+        "Korean": ["happy k-pop", "bright k-pop songs"],
+        "Indonesian": ["happy indonesian pop", "lagu pop indonesia bahagia"],
+    },
+    "Energetic": {
+        "English": [
+            "english workout hits", "high energy english edm", "english party pop",
+            "english pump up songs", "english gym playlist", "english energetic rock",
+            "english dance hits"
+        ],
+        "Korean": ["energetic k-pop", "k-pop workout songs"],
+        "Indonesian": ["lagu indonesia semangat", "indonesian energetic pop"],
+    },
+    "Calm": {
+        "English": [
+            "english calm acoustic", "english chill indie", "english soft pop calm",
+            "english peaceful songs", "english relaxing acoustic", "english mellow indie",
+            "english chill folk"
+        ],
+        "Instrumental": ["ambient piano instrumental", "lofi chill instrumental"],
+        "Indonesian": ["calm indonesian indie", "lagu indonesia santai"],
+        "Korean": ["calm k-pop songs"],
+    },
+    "Romantic": {
+        "English": [
+            "english romantic love songs", "modern english love pop", "english rnb love songs",
+            "english wedding love songs", "english acoustic love songs", "english romantic ballads",
+            "english soft love songs"
+        ],
+        "Korean": ["romantic k-pop", "korean love songs"],
+        "Indonesian": ["indonesian love songs", "lagu cinta indonesia"],
+        "French": ["french love songs"],
+    },
+    "Angry": {
+        "English": [
+            "english angry rock", "english metal workout", "english rage rock",
+            "english hard rock", "english aggressive hip hop", "english punk rock anger",
+            "english heavy metal songs"
+        ],
+        "Korean": ["aggressive k-pop", "k-pop hard songs"],
+        "Japanese": ["j-rock angry songs"],
+    },
+    "Low Energy": {
+        "English": [
+            "english slow chill songs", "english dream pop", "english late night songs",
+            "english soft indie", "english sleepy songs", "english mellow bedroom pop",
+            "english slow acoustic"
+        ],
+        "Korean": ["slow k-pop", "korean night songs"],
+        "Indonesian": ["lagu indonesia mellow", "indonesian slow songs"],
+        "Instrumental": ["lofi sleep instrumental"],
+    },
+    "Sad": {
+        "English": [
+            "english sad songs", "english heartbreak pop", "english sad indie",
+            "english breakup songs", "english emotional ballads", "english sad acoustic",
+            "english melancholic pop"
+        ],
+        "Korean": ["sad k-pop", "korean sad songs"],
+        "Indonesian": ["indonesian sad songs", "lagu galau indonesia"],
+    },
+}
+
+
+# Legacy manual outside-song pool kept only as a backup reference.
+# Runtime outside-dataset recommendations now come from Spotify Web API when
+# SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are set in environment variables.
 OUTSIDE_DATASET: Dict[str, List[Dict[str, Any]]] = {
     'Happy': [
         {"title": 'Happy', "artist": 'Pharrell Williams', "genre": 'pop', "language": 'English'},
@@ -642,6 +715,102 @@ def fetch_spotify_metadata(title: str, artist: str, track_id: str = "") -> Dict[
     return metadata
 
 
+def infer_spotify_language_from_query(query: str, fallback: str = "English") -> str:
+    """Best-effort label only. Spotify Search API does not return track language."""
+    q = query.lower()
+    if "indonesian" in q or "indonesia" in q or "lagu" in q:
+        return "Indonesian"
+    if "k-pop" in q or "korean" in q:
+        return "Korean"
+    if "j-rock" in q or "japanese" in q:
+        return "Japanese"
+    if "french" in q:
+        return "French"
+    if "piano" in q or "ambient" in q or "lofi" in q or "instrumental" in q:
+        return "Instrumental"
+    return fallback or "English"
+
+
+def infer_spotify_genre_from_query(query: str) -> str:
+    q = query.lower()
+    if "k-pop" in q:
+        return "k-pop"
+    if "edm" in q:
+        return "edm"
+    if "rock" in q:
+        return "rock"
+    if "metal" in q:
+        return "metal"
+    if "hip hop" in q:
+        return "hip-hop"
+    if "rnb" in q or "r&b" in q:
+        return "r-n-b"
+    if "indie" in q:
+        return "indie"
+    if "acoustic" in q:
+        return "acoustic"
+    if "piano" in q:
+        return "piano"
+    if "ambient" in q:
+        return "ambient"
+    if "lofi" in q:
+        return "lofi"
+    return "pop"
+
+
+def search_spotify_tracks(
+    query: str,
+    limit: int = 30,
+    offset: Optional[int] = None,
+    language_label: str = "English",
+) -> List[Dict[str, Any]]:
+    """Search Spotify for real outside-dataset tracks. Requires env vars."""
+    token = get_spotify_token()
+    if not token or requests is None:
+        return []
+
+    # Random offset keeps outside-dataset results fresh without hardcoded song lists.
+    if offset is None:
+        offset = random.randint(0, 120)
+
+    try:
+        response = requests.get(
+            "https://api.spotify.com/v1/search",
+            headers={"Authorization": f"Bearer {token}"},
+            params={
+                "q": query,
+                "type": "track",
+                "market": "US",
+                "limit": max(1, min(50, int(limit))),
+                "offset": max(0, min(950, int(offset))),
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        items = response.json().get("tracks", {}).get("items", []) or []
+    except Exception:
+        return []
+
+    results: List[Dict[str, Any]] = []
+    for item in items:
+        track_id = item.get("id") or ""
+        artists = ";".join(artist.get("name", "") for artist in item.get("artists", []) if artist.get("name"))
+        title = item.get("name") or "Unknown Track"
+        if not title or not artists:
+            continue
+        results.append({
+            "title": title,
+            "artist": artists,
+            "track_id": track_id,
+            "spotify_url": item.get("external_urls", {}).get("spotify") or spotify_track_url(track_id, title, artists),
+            "spotify_embed_url": spotify_embed_url(track_id),
+            "preview_url": item.get("preview_url") or "",
+            "album_cover": ((item.get("album", {}).get("images") or [{}])[0].get("url") or ""),
+            "genre": infer_spotify_genre_from_query(query),
+            "language": infer_spotify_language_from_query(query, language_label),
+        })
+    return results
+
 
 def ensure_model() -> None:
     MODELS_DIR.mkdir(exist_ok=True)
@@ -846,6 +1015,67 @@ def song_key(title: Any, artist: Any) -> str:
     return f"{str(title).strip().lower()}::{str(artist).strip().lower()}"
 
 
+def flatten_spotify_queries(mood: str, only_language: Optional[str] = None) -> List[Dict[str, str]]:
+    buckets = SPOTIFY_MOOD_QUERIES.get(mood) or SPOTIFY_MOOD_QUERIES.get("Happy", {})
+    entries: List[Dict[str, str]] = []
+    for language_label, queries in buckets.items():
+        if only_language and language_label != only_language:
+            continue
+        for query in queries:
+            entries.append({"query": query, "language": language_label})
+    random.shuffle(entries)
+    return entries
+
+
+def collect_spotify_recommendations(
+    mood: str,
+    entries: List[Dict[str, str]],
+    target_count: int,
+    avoid_set: set,
+    seen: set,
+    allow_repeat: bool,
+    score_min: float,
+    score_max: float,
+) -> List[Dict[str, Any]]:
+    output: List[Dict[str, Any]] = []
+    if target_count <= 0:
+        return output
+
+    # Multiple passes with random offsets gives fresher results and avoids returning the same top Spotify results.
+    for entry in entries:
+        if len(output) >= target_count:
+            break
+        query = entry["query"]
+        language_label = entry.get("language", "English")
+        needed = max(20, min(50, (target_count - len(output)) * 4))
+        candidates = search_spotify_tracks(query, limit=needed, language_label=language_label)
+        random.shuffle(candidates)
+        for song in candidates:
+            key = song_key(song.get("title", ""), song.get("artist", ""))
+            if not key or key in seen:
+                continue
+            if avoid_set and key in avoid_set and not allow_repeat:
+                continue
+            seen.add(key)
+            output.append({
+                "title": song.get("title", "Unknown Track"),
+                "artist": song.get("artist", "Unknown Artist"),
+                "score": round(random.uniform(score_min, score_max), 1),
+                "mood": mood,
+                "source": "outside dataset",
+                "genre": song.get("genre", "spotify"),
+                "language": song.get("language", language_label),
+                "spotify_url": song.get("spotify_url", ""),
+                "spotify_embed_url": song.get("spotify_embed_url", ""),
+                "preview_url": song.get("preview_url", ""),
+                "track_id": song.get("track_id", ""),
+                "album_cover": song.get("album_cover", ""),
+            })
+            if len(output) >= target_count:
+                break
+    return output
+
+
 def recommend_outside_dataset(
     mood: str,
     limit: int = 10,
@@ -854,31 +1084,45 @@ def recommend_outside_dataset(
     avoid_keys: Optional[List[str]] = None,
     repeat_chance: float = 0.33,
 ) -> List[Dict[str, Any]]:
-    pool = [song for song in OUTSIDE_DATASET.get(mood, []) if outside_matches(song, genre, language)]
-    avoid_set = {str(key).lower() for key in (avoid_keys or [])}
-    if avoid_set and random.random() >= repeat_chance:
-        fresh_pool = [song for song in pool if song_key(song.get("title", ""), song.get("artist", "")) not in avoid_set]
-        if fresh_pool:
-            pool = fresh_pool
-    if len(pool) < limit and (normalize_filter(genre) != "all" or normalize_filter(language) != "all"):
-        # Keep results useful even when the manual outside pool has few exact matches.
-        pool.extend([song for song in OUTSIDE_DATASET.get(mood, []) if song not in pool])
-    if not pool:
+    """Return outside-dataset recommendations from Spotify API with ~70% English targeting."""
+    if limit <= 0:
         return []
-    picked = random.sample(pool, k=min(limit, len(pool)))
-    return [
-        {
-            "title": song["title"],
-            "artist": song["artist"],
-            "score": max(72, 96 - idx * random.uniform(1.2, 3.4)),
-            "mood": mood,
-            "source": "outside dataset",
-            "genre": song.get("genre", "external pool"),
-            "language": song.get("language", "English"),
-            **fetch_spotify_metadata(song["title"], song["artist"], ""),
-        }
-        for idx, song in enumerate(picked)
-    ]
+
+    avoid_set = {str(key).lower() for key in (avoid_keys or [])}
+    allow_repeat = random.random() < repeat_chance
+    seen = set()
+
+    # Spotify does not provide reliable language per track. We target English by query mix instead:
+    # around 70% English queries and 30% international/instrumental queries.
+    english_target = round(limit * 0.70)
+    international_target = max(0, limit - english_target)
+
+    english_entries = flatten_spotify_queries(mood, "English")
+    international_entries = flatten_spotify_queries(mood)
+    international_entries = [entry for entry in international_entries if entry.get("language") != "English"]
+    if not international_entries:
+        international_entries = flatten_spotify_queries(mood, "English")
+
+    output: List[Dict[str, Any]] = []
+    output.extend(collect_spotify_recommendations(
+        mood, english_entries, english_target, avoid_set, seen, allow_repeat, 78, 97
+    ))
+    output.extend(collect_spotify_recommendations(
+        mood, international_entries, international_target, avoid_set, seen, allow_repeat, 74, 95
+    ))
+
+    # If Spotify returns fewer songs than needed, fill the rest with any mood query but still prefer English first.
+    if len(output) < limit:
+        output.extend(collect_spotify_recommendations(
+            mood, flatten_spotify_queries(mood, "English"), limit - len(output), avoid_set, seen, True, 72, 94
+        ))
+    if len(output) < limit:
+        output.extend(collect_spotify_recommendations(
+            mood, flatten_spotify_queries(mood), limit - len(output), avoid_set, seen, True, 70, 92
+        ))
+
+    random.shuffle(output)
+    return output[:limit]
 
 
 def mixed_recommendations(
@@ -927,7 +1171,8 @@ def health():
         "classes": list(getattr(model, "classes_", MOODS)) if model is not None else MOODS,
         "uses_real_song_dataset": df is not None,
         "dataset_song_count": int(len(df)) if df is not None else 0,
-        "outside_dataset_enabled": True,
+        "outside_dataset_enabled": bool(os.getenv("SPOTIFY_CLIENT_ID") and os.getenv("SPOTIFY_CLIENT_SECRET")),
+        "outside_dataset_source": "Spotify API" if os.getenv("SPOTIFY_CLIENT_ID") and os.getenv("SPOTIFY_CLIENT_SECRET") else "dataset fallback only",
         "spotify_preview_enabled": bool(os.getenv("SPOTIFY_CLIENT_ID") and os.getenv("SPOTIFY_CLIENT_SECRET")),
         "spotify_embed_enabled": True,
     })
@@ -938,7 +1183,7 @@ def filters():
     df = load_song_database()
     dataset_genres = []
     languages = sorted({"English", "Indonesian", "Korean", "Japanese", "Chinese", "Spanish", "Portuguese", "French", "Instrumental"})
-    outside_genres = sorted({song.get("genre", "external pool") for songs in OUTSIDE_DATASET.values() for song in songs})
+    outside_genres = sorted({"pop", "edm", "rock", "metal", "hip-hop", "r-n-b", "indie", "acoustic", "piano", "ambient", "lofi", "k-pop"})
     if df is not None:
         dataset_genres = sorted(df["track_genre"].dropna().astype(str).unique().tolist())
         languages = sorted(set(languages) | set(df["language"].dropna().astype(str).unique().tolist()))
